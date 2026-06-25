@@ -1,52 +1,74 @@
 # Autopilot-Interactive-Login.ps1
-# Standalone script for OSDCloud deployments
-# Prompts technician to authenticate with Entra ID / Azure AD tenant credentials
-# and automatically registers the device in Autopilot
+# Tenant-AGNOSTIC version for universal OSDCloud USB deployments
+# Works across any Entra ID tenant - no hardcoded Tenant ID, Client ID, or Secrets
 
-Write-Host "=== Autopilot Registration - Tenant Login Required ===" -ForegroundColor Cyan
-Write-Host "Please sign in with your tenant credentials to automatically register this device in Autopilot." -ForegroundColor Yellow
+Write-Host "=== Autopilot Registration - Tenant Agnostic Mode ===" -ForegroundColor Cyan
+Write-Host "This script works with ANY tenant. You will authenticate interactively." -ForegroundColor Yellow
 Write-Host ""
 
 # =============================================
-# OPTION 1: Simple Credential Prompt (easiest)
+# TENANT AGNOSTIC AUTHENTICATION
 # =============================================
-$creds = Get-Credential -Message "Enter your Entra ID UPN (user@yourtenant.com) and password"
 
-# =============================================
-# OPTION 2: Device Code Flow (more secure - recommended)
-# Uncomment the block below if you prefer this method
-# =============================================
-<#
-Write-Host "A device code will appear below."
-Write-Host "Go to https://microsoft.com/devicelogin on any device (phone/laptop) and enter the code."
-Connect-MgGraph -UseDeviceCode -Scopes "DeviceManagementManagedDevices.ReadWrite.All" -NoWelcome
-#>
+# Primary method: Device Code Flow (recommended - works across tenants)
+Write-Host "Starting Device Code authentication..." -ForegroundColor Green
+Write-Host "A code will be displayed. Go to https://microsoft.com/devicelogin on any device and sign in with the target tenant account."
 
 try {
-    Write-Host ""
-    Write-Host "Authentication successful! Collecting hardware hash..." -ForegroundColor Green
+    Connect-MgGraph -UseDeviceCode -Scopes "DeviceManagementManagedDevices.ReadWrite.All" -NoWelcome
     
-    # Collect the Windows Autopilot hardware hash
+    Write-Host ""
+    Write-Host "Successfully authenticated to tenant!" -ForegroundColor Green
+    
+    # Optional: Show which tenant you are connected to
+    $context = Get-MgContext
+    Write-Host "Connected to Tenant: $($context.TenantId)" -ForegroundColor Cyan
+    
+} catch {
+    Write-Host "Authentication failed: $_" -ForegroundColor Red
+    Write-Host "Falling back to simple credential prompt..." -ForegroundColor Yellow
+    
+    # Fallback: Simple credential prompt
+    $creds = Get-Credential -Message "Enter UPN and password for the target tenant"
+    Connect-MgGraph -Credential $creds -Scopes "DeviceManagementManagedDevices.ReadWrite.All" -NoWelcome
+}
+
+# =============================================
+# COLLECT HARDWARE HASH
+# =============================================
+try {
+    Write-Host ""
+    Write-Host "Collecting Windows Autopilot hardware hash..." -ForegroundColor Green
     $hash = Get-WindowsAutoPilotInfo -OutputObject
     
     Write-Host "Hardware hash collected successfully." -ForegroundColor Green
     
     # =============================================
-    # CUSTOMIZE THIS SECTION if you want to automatically upload via Graph API
-    # Example (requires proper app registration + permissions):
-    # Invoke-MgGraphRequest -Method POST `
-    #     -Uri "https://graph.microsoft.com/beta/deviceManagement/importedWindowsAutopilotDeviceIdentities" `
-    #     -Body ($hash | ConvertTo-Json -Depth 10)
+    # AUTOMATIC UPLOAD TO AUTOPILOT (using signed-in context)
     # =============================================
+    Write-Host "Uploading device to Autopilot..." -ForegroundColor Green
     
-    Write-Host "Device is now ready for Autopilot registration." -ForegroundColor Green
+    $body = @{
+        serialNumber = $hash.SerialNumber
+        productKey   = $hash.ProductKey
+        hardwareHash = $hash.HardwareHash
+    }
+    
+    # Upload using the current authenticated session (tenant-agnostic)
+    Invoke-MgGraphRequest -Method POST `
+        -Uri "https://graph.microsoft.com/beta/deviceManagement/importedWindowsAutopilotDeviceIdentities" `
+        -Body ($body | ConvertTo-Json -Depth 5) `
+        -ContentType "application/json"
+    
+    Write-Host ""
+    Write-Host "SUCCESS: Device has been automatically registered in Autopilot!" -ForegroundColor Green
     
 } catch {
     Write-Host ""
-    Write-Host "Error during Autopilot process: $_" -ForegroundColor Red
-    Write-Host "You can continue - the device will enter standard Autopilot OOBE." -ForegroundColor Yellow
+    Write-Host "Upload to Autopilot failed: $_" -ForegroundColor Red
+    Write-Host "The device will still boot into Autopilot OOBE and can be registered manually or via profile." -ForegroundColor Yellow
 }
 
 Start-Sleep -Seconds 3
 Write-Host ""
-Write-Host "Script complete. Proceeding with OSDCloud..." -ForegroundColor Cyan
+Write-Host "Autopilot registration step complete. Continuing deployment..." -ForegroundColor Cyan
