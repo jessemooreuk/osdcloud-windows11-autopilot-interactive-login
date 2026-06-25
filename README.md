@@ -6,6 +6,12 @@ Automated creation of a Windows 11 OSD image with automatic enrollment into Intu
 
 **Repository:** https://github.com/jessemooreuk/LazyOSD
 
+## Credit
+
+LazyOSD is built on top of the outstanding work by **OSDeploy** and their excellent [OSD](https://www.osdeploy.com/) PowerShell module. 
+
+This project simply adds automation and a specific enterprise-focused workflow on top of their foundation.
+
 ## What is LazyOSD?
 
 LazyOSD is a simplified, automated method of building a fully functional OSD (Operating System Deployment) image using OSDCloud.
