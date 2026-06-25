@@ -1,7 +1,18 @@
 # Build-OSDCloudUSB.ps1
 # LazyOSD - Fully Automated Enterprise OSD + Intune Enrollment
+#
+# Credits:
+#   - Built on the excellent OSD PowerShell module by OSDeploy (https://www.osdeploy.com/)
+#   - Automation, enterprise workflow, and specific use case designed by Jesse Moore
+#   - Script logic and refinements developed through detailed interaction with Grok (xAI)
 
-Write-Host "=== LazyOSD - Fully Automated Build ===" -ForegroundColor Cyan
+Write-Host "=== LazyOSD - Fully Automated Enterprise Build ===" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "Credits:" -ForegroundColor Yellow
+Write-Host "  - Built on the excellent OSD module by OSDeploy (https://www.osdeploy.com/)" -ForegroundColor Gray
+Write-Host "  - Automation and enterprise workflow designed by Jesse Moore" -ForegroundColor Gray
+Write-Host "  - Script logic developed through interaction with Grok (xAI)" -ForegroundColor Gray
+Write-Host ""
 
 $ProjectName = Read-Host "Enter Project Name (used for ISO filename)"
 if ([string]::IsNullOrWhiteSpace($ProjectName)) { $ProjectName = "OSDCloud-Autopilot" }
