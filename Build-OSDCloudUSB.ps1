@@ -40,7 +40,7 @@ try {
     exit
 }
 
-# Create Unattend.xml in workspace (compatible method)
+# Create Unattend.xml in workspace
 $unattendContent = @'
 <?xml version="1.0" encoding="utf-8"?>
 <unattend xmlns="urn:schemas-microsoft-com:unattend">
@@ -75,9 +75,9 @@ New-OSDCloudWorkspace
 Write-BuildStep "Adding Intel drivers..." 70
 Edit-OSDCloudWinPE -CloudDriver WiFi,IntelNet,*
 
-# Configure Windows 11 24H2 Enterprise with ZTI
+# Stronger ZTI configuration for Windows 11 24H2 Enterprise
 Write-BuildStep "Configuring Windows 11 24H2 Enterprise deployment..." 75
-Start-OSDCloud -OSVersion 'Windows 11' -OSBuild '24H2' -OSEdition 'Enterprise' -ZTI
+Start-OSDCloud -OSVersion 'Windows 11' -OSBuild '24H2' -OSEdition 'Enterprise' -ZTI -SkipRecoveryPartition -SkipBitlocker
 
 Write-BuildStep "Finalizing WinPE..." 82
 Edit-OSDCloudWinPE
@@ -88,7 +88,7 @@ Write-BuildStep "Enabling full automation on boot..." 88
 $startnetFile = Get-ChildItem -Path "$env:ProgramData\OSDCloud\Template" -Recurse -Filter "Startnet.cmd" | Select-Object -First 1 -ExpandProperty FullName
 
 if ($startnetFile) {
-    Add-Content -Path $startnetFile -Value "powershell -NoLogo -Command \"Start-OSDCloud -OSVersion 'Windows 11' -OSBuild '24H2' -OSEdition 'Enterprise' -ZTI\""
+    Add-Content -Path $startnetFile -Value "powershell -NoLogo -Command \"Start-OSDCloud -OSVersion 'Windows 11' -OSBuild '24H2' -OSEdition 'Enterprise' -ZTI -SkipRecoveryPartition -SkipBitlocker\""
     Write-Host "Automation enabled in Startnet.cmd" -ForegroundColor Green
 }
 
