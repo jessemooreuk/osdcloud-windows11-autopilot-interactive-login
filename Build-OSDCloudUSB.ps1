@@ -1,38 +1,62 @@
 # Build-OSDCloudUSB.ps1
-# Fully automated OSDCloud build with Project Name and output choice
+# Fully automated OSDCloud build with progress/verbose option
 
 Write-Host "=== OSDCloud Automated Build ===" -ForegroundColor Cyan
 
-# Ask for Project Name
-$ProjectName = Read-Host "Enter Project Name (used for Workspace, USB label and ISO name)"
+# Project Name
+$ProjectName = Read-Host "Enter Project Name"
 if ([string]::IsNullOrWhiteSpace($ProjectName)) { $ProjectName = "OSDCloud-Autopilot" }
 
-Write-Host "Project: $ProjectName" -ForegroundColor Green
+# Progress vs Verbose choice
+$mode = Read-Host "Show simple progress bar or verbose output? (P = Progress bar, V = Verbose)"
+$UseProgressBar = ($mode.ToUpper() -eq "P")
 
-# Download required scripts
-Write-Host "Downloading scripts..." -ForegroundColor Yellow
+if ($UseProgressBar) {
+    Write-Host "Progress bar mode enabled (errors will still be shown)." -ForegroundColor Green
+} else {
+    Write-Host "Verbose mode enabled." -ForegroundColor Green
+}
+
+# Download scripts
+if ($UseProgressBar) { Write-Progress -Activity "Build" -Status "Downloading scripts..." -PercentComplete 10 }
+else { Write-Host "Downloading scripts..." -ForegroundColor Yellow }
 
 $workspaceRoot = "$env:ProgramData\OSDCloud\Workspace"
 New-Item -Path $workspaceRoot -ItemType Directory -Force | Out-Null
 
 $baseUrl = "https://raw.githubusercontent.com/jessemooreuk/osdcloud-windows11-autopilot-interactive-login/main"
 
-Invoke-WebRequest -Uri "$baseUrl/Collect-AutopilotHash-WinPE.ps1" -OutFile "$workspaceRoot\Collect-AutopilotHash-WinPE.ps1" -UseBasicParsing
-Invoke-WebRequest -Uri "$baseUrl/AuditMode-AutopilotUpload.ps1" -OutFile "$workspaceRoot\AuditMode-AutopilotUpload.ps1" -UseBasicParsing
+try {
+    Invoke-WebRequest -Uri "$baseUrl/Collect-AutopilotHash-WinPE.ps1" -OutFile "$workspaceRoot\Collect-AutopilotHash-WinPE.ps1" -UseBasicParsing -ErrorAction Stop
+    Invoke-WebRequest -Uri "$baseUrl/AuditMode-AutopilotUpload.ps1" -OutFile "$workspaceRoot\AuditMode-AutopilotUpload.ps1" -UseBasicParsing -ErrorAction Stop
+} catch {
+    Write-Host "ERROR downloading scripts: $_" -ForegroundColor Red
+    exit
+}
 
-Write-Host "Scripts downloaded." -ForegroundColor Green
+if ($UseProgressBar) { Write-Progress -Activity "Build" -Status "Scripts downloaded." -PercentComplete 25 }
 
-# Standard build steps
+# Core build steps
+if (-not $UseProgressBar) { Write-Host "Updating OSD module..." -ForegroundColor Yellow }
 Install-Module OSD -Force -AllowClobber
 Import-Module OSD -Force
 
-New-OSDCloudTemplate -WinRE -Verbose
-New-OSDCloudWorkspace -Name $ProjectName -Verbose
+if ($UseProgressBar) { Write-Progress -Activity "Build" -Status "Creating Template and Workspace..." -PercentComplete 35 }
+else { Write-Host "Creating Template and Workspace..." -ForegroundColor Yellow }
 
-Edit-OSDCloudWinPE -CloudDriver WiFi,IntelNet,* -Verbose
-Edit-OSDCloudWinPE -Verbose
+New-OSDCloudTemplate -WinRE -Verbose:$(-not $UseProgressBar)
+New-OSDCloudWorkspace -Name $ProjectName -Verbose:$(-not $UseProgressBar)
 
-# Unattend for automatic Audit Mode
+if ($UseProgressBar) { Write-Progress -Activity "Build" -Status "Adding drivers..." -PercentComplete 50 }
+else { Write-Host "Adding Intel drivers..." -ForegroundColor Yellow }
+
+Edit-OSDCloudWinPE -CloudDriver WiFi,IntelNet,* -Verbose:$(-not $UseProgressBar)
+Edit-OSDCloudWinPE -Verbose:$(-not $UseProgressBar)
+
+# Unattend
+if ($UseProgressBar) { Write-Progress -Activity "Build" -Status "Configuring Unattend..." -PercentComplete 65 }
+else { Write-Host "Configuring Unattend for Audit Mode..." -ForegroundColor Yellow }
+
 $unattend = @'
 <?xml version="1.0" encoding="utf-8"?>
 <unattend xmlns="urn:schemas-microsoft-com:unattend">
@@ -54,32 +78,39 @@ $unattend = @'
 '@ 
 
 $unattend | Out-File -FilePath "$env:ProgramData\OSDCloud\Unattend.xml" -Encoding utf8 -Force
-Edit-OSDCloudWinPE -Unattend "$env:ProgramData\OSDCloud\Unattend.xml" -Verbose
+Edit-OSDCloudWinPE -Unattend "$env:ProgramData\OSDCloud\Unattend.xml" -Verbose:$(-not $UseProgressBar)
 
-# Ask what output the user wants
-Write-Host ""
-$choice = Read-Host "Create USB, ISO, or Both? (U = USB, I = ISO, B = Both)"
+# Final output choice
+if ($UseProgressBar) { Write-Progress -Activity "Build" -Status "Ready to create output..." -PercentComplete 85 }
+else { Write-Host "Build steps complete." -ForegroundColor Green }
+
+$choice = Read-Host "Create USB, ISO, or Both? (U/I/B)"
 
 switch ($choice.ToUpper()) {
     "U" { 
-        Write-Host "Creating USB..." -ForegroundColor Yellow
+        if (-not $UseProgressBar) { Write-Host "Creating USB..." -ForegroundColor Yellow }
         New-OSDCloudUSB 
     }
     "I" { 
-        Write-Host "Creating ISO named $ProjectName..." -ForegroundColor Yellow
+        if (-not $UseProgressBar) { Write-Host "Creating ISO named $ProjectName..." -ForegroundColor Yellow }
         New-OSDCloudISO -Name $ProjectName 
     }
     "B" { 
-        Write-Host "Creating USB..." -ForegroundColor Yellow
+        if (-not $UseProgressBar) { Write-Host "Creating USB..." -ForegroundColor Yellow }
         New-OSDCloudUSB
-        Write-Host "Creating ISO named $ProjectName..." -ForegroundColor Yellow
+        if (-not $UseProgressBar) { Write-Host "Creating ISO named $ProjectName..." -ForegroundColor Yellow }
         New-OSDCloudISO -Name $ProjectName 
     }
     default { 
-        Write-Host "Creating USB..." -ForegroundColor Yellow
+        if (-not $UseProgressBar) { Write-Host "Creating USB..." -ForegroundColor Yellow }
         New-OSDCloudUSB 
     }
 }
 
-Write-Host "=== Build Complete ===" -ForegroundColor Green
+if ($UseProgressBar) { 
+    Write-Progress -Activity "Build" -Status "Complete" -PercentComplete 100 -Completed 
+} else { 
+    Write-Host "=== Build Complete ===" -ForegroundColor Green 
+}
+
 Write-Host "Project: $ProjectName" -ForegroundColor Green
