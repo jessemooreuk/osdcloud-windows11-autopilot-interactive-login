@@ -1,52 +1,50 @@
 # Automated installation of Windows 11 using OSDCloud
 
 **Booting from a USB Stick**  
-**Automatically registering in Autopilot (Tenant-Agnostic + Audit Mode)**  
+**Automatically registering in Autopilot (Tenant-Agnostic)**  
 **Includes all common Intel wireless and LAN drivers**  
 **OSDCloud supports WiFi Connection**
 
-**Fully Automated Build (Recommended)**
+**Simplified & Reliable Workflow (Recommended)**
+
+## Overview
+
+This version focuses on maximum reliability:
+
+- **WinPE**: Clean Windows 11 installation only
+- **Audit Mode**: Automatically collects hardware hash + uploads to Autopilot + exits to normal OOBE
+
+Everything important (hash collection + upload) now happens in Audit Mode (full Windows environment).
 
 ## How to Build
-
-Run this one-liner in PowerShell:
 
 ```powershell
 irm https://raw.githubusercontent.com/jessemooreuk/osdcloud-windows11-autopilot-interactive-login/main/Build-OSDCloudUSB.ps1 | iex
 ```
 
-### What Happens During the Build
-
 The build script will:
+- Ask for a Project Name (used for ISO filename)
+- Ask if you want Progress Bar or Verbose output
+- Download the Audit Mode script
+- Configure automatic boot into Audit Mode
+- Let you choose USB, ISO, or Both at the end
 
-1. Ask you for a **Project Name** (used for Workspace name and ISO filename)
-2. Automatically download the two required runtime scripts
-3. Create Template + Workspace
-4. Add Intel Wireless + LAN drivers
-5. Configure automatic execution in WinPE and Audit Mode
-6. At the end, ask you whether you want to create:
-   - **USB** only
-   - **ISO** only (named after your Project)
-   - **Both** USB and ISO
+## What Happens During Deployment
 
-You no longer need to manually place any scripts — everything is handled automatically.
+1. **WinPE** → Clean Windows 11 installation (fully automatic)
+2. **First Boot** → Automatically boots into **Audit Mode**
+3. **Audit Mode** (automatic):
+   - Prompts to connect to WiFi (if needed)
+   - Collects hardware hash
+   - Authenticates using Device Code Flow (tenant-agnostic)
+   - Uploads device to Autopilot
+   - Exits Audit Mode and reboots into normal OOBE
 
-## After Building
+## Files
 
-- If you chose **ISO**, you will get an ISO file named after your Project.
-- Boot the ISO/USB on a target machine.
-- The deployment will:
-  - Automatically collect the hardware hash in WinPE
-  - Boot into Audit Mode
-  - Automatically run the upload script in Audit Mode (with WiFi prompt)
-  - Exit to normal OOBE after registration
-
-## Files in This Repository
-
-- `Build-OSDCloudUSB.ps1` — Main automated build script
-- `Collect-AutopilotHash-WinPE.ps1` — Runs in WinPE (auto-executed)
-- `AuditMode-AutopilotUpload.ps1` — Runs in Audit Mode (auto-executed)
+- `Build-OSDCloudUSB.ps1` – Main build script
+- `AuditMode-AutopilotUpload.ps1` – Runs automatically in Audit Mode (collection + upload + exit to OOBE)
 
 ---
 
-**This is currently the most automated and user-friendly way to build your OSDCloud USB/ISO.**
+**This is currently the cleanest and most reliable workflow.**
