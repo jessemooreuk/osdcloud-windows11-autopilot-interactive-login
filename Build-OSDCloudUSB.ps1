@@ -40,7 +40,7 @@ try {
     exit
 }
 
-# Create Unattend.xml for Audit Mode + automatic script
+# Create Unattend.xml (placed in workspace - OSDCloud should pick it up)
 $unattendContent = @'
 <?xml version="1.0" encoding="utf-8"?>
 <unattend xmlns="urn:schemas-microsoft-com:unattend">
@@ -62,10 +62,6 @@ $unattendContent = @'
 '@ 
 
 $unattendContent | Out-File -FilePath "$workspaceRoot\Unattend.xml" -Encoding utf8 -Force
-
-# Apply the Unattend properly
-Write-BuildStep "Applying Unattend for Audit Mode..." 50
-Edit-OSDCloudWinPE -Unattend "$workspaceRoot\Unattend.xml"
 
 # Core setup
 Write-BuildStep "Updating OSD module..." 55
