@@ -1,10 +1,10 @@
 # Build-OSDCloudUSB.ps1
-# Fully automated build with local scripts properly injected into WinPE
+# Fully automated OSDCloud build with Project Name and output choice
 
 Write-Host "=== OSDCloud Automated Build ===" -ForegroundColor Cyan
 
 # Ask for Project Name
-$ProjectName = Read-Host "Enter Project Name (used for Workspace and USB label)"
+$ProjectName = Read-Host "Enter Project Name (used for Workspace, USB label and ISO name)"
 if ([string]::IsNullOrWhiteSpace($ProjectName)) { $ProjectName = "OSDCloud-Autopilot" }
 
 Write-Host "Project: $ProjectName" -ForegroundColor Green
@@ -20,9 +20,9 @@ $baseUrl = "https://raw.githubusercontent.com/jessemooreuk/osdcloud-windows11-au
 Invoke-WebRequest -Uri "$baseUrl/Collect-AutopilotHash-WinPE.ps1" -OutFile "$workspaceRoot\Collect-AutopilotHash-WinPE.ps1" -UseBasicParsing
 Invoke-WebRequest -Uri "$baseUrl/AuditMode-AutopilotUpload.ps1" -OutFile "$workspaceRoot\AuditMode-AutopilotUpload.ps1" -UseBasicParsing
 
-Write-Host "Scripts downloaded to workspace root." -ForegroundColor Green
+Write-Host "Scripts downloaded." -ForegroundColor Green
 
-# Build process
+# Standard build steps
 Install-Module OSD -Force -AllowClobber
 Import-Module OSD -Force
 
@@ -30,11 +30,9 @@ New-OSDCloudTemplate -WinRE -Verbose
 New-OSDCloudWorkspace -Name $ProjectName -Verbose
 
 Edit-OSDCloudWinPE -CloudDriver WiFi,IntelNet,* -Verbose
-
-# Run Edit-OSDCloudWinPE to help include workspace files into final WinPE
 Edit-OSDCloudWinPE -Verbose
 
-# Configure Unattend for automatic Audit Mode execution
+# Unattend for automatic Audit Mode
 $unattend = @'
 <?xml version="1.0" encoding="utf-8"?>
 <unattend xmlns="urn:schemas-microsoft-com:unattend">
@@ -58,8 +56,30 @@ $unattend = @'
 $unattend | Out-File -FilePath "$env:ProgramData\OSDCloud\Unattend.xml" -Encoding utf8 -Force
 Edit-OSDCloudWinPE -Unattend "$env:ProgramData\OSDCloud\Unattend.xml" -Verbose
 
-New-OSDCloudUSB
+# Ask what output the user wants
+Write-Host ""
+$choice = Read-Host "Create USB, ISO, or Both? (U = USB, I = ISO, B = Both)"
+
+switch ($choice.ToUpper()) {
+    "U" { 
+        Write-Host "Creating USB..." -ForegroundColor Yellow
+        New-OSDCloudUSB 
+    }
+    "I" { 
+        Write-Host "Creating ISO named $ProjectName..." -ForegroundColor Yellow
+        New-OSDCloudISO -Name $ProjectName 
+    }
+    "B" { 
+        Write-Host "Creating USB..." -ForegroundColor Yellow
+        New-OSDCloudUSB
+        Write-Host "Creating ISO named $ProjectName..." -ForegroundColor Yellow
+        New-OSDCloudISO -Name $ProjectName 
+    }
+    default { 
+        Write-Host "Creating USB..." -ForegroundColor Yellow
+        New-OSDCloudUSB 
+    }
+}
 
 Write-Host "=== Build Complete ===" -ForegroundColor Green
 Write-Host "Project: $ProjectName" -ForegroundColor Green
-Write-Host "Scripts are now included in the root of WinPE (X:\)." -ForegroundColor Green
