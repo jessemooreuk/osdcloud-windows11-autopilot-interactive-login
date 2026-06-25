@@ -93,12 +93,18 @@ Edit-OSDCloudWinPE -CloudDriver WiFi,IntelNet,*
 Write-BuildStep "Configuring Windows 11 24H2 Enterprise deployment..." 75
 Start-OSDCloud -OSVersion 'Windows 11' -OSBuild '24H2' -OSEdition 'Enterprise' -ZTI
 
-Write-BuildStep "Finalizing WinPE..." 82
-Edit-OSDCloudWinPE
+Write-BuildStep "Creating dedicated automation launcher..." 82
 
-# Overwrite Startnet.cmd for full automation (more reliable than appending)
-Write-BuildStep "Configuring automatic boot..." 88
+# Create a dedicated launcher script (more reliable than long command in Startnet.cmd)
+$launcherScript = @'
+# Start-LazyOSD.ps1
+# Dedicated launcher for full zero-touch automation
+Start-OSDCloud -OSVersion 'Windows 11' -OSBuild '24H2' -OSEdition 'Enterprise' -ZTI
+'@ 
 
+$launcherScript | Out-File -FilePath "$workspaceRoot\Start-LazyOSD.ps1" -Encoding utf8 -Force
+
+# Overwrite Startnet.cmd to call the dedicated launcher
 $startnetFile = Get-ChildItem -Path "$env:ProgramData\OSDCloud\Template" -Recurse -Filter "Startnet.cmd" | Select-Object -First 1 -ExpandProperty FullName
 
 if ($startnetFile) {
@@ -107,10 +113,10 @@ if ($startnetFile) {
 wpeinit
 cd\
 title LazyOSD 26.6.25.1
-powershell -NoLogo -Command "Start-OSDCloud -OSVersion 'Windows 11' -OSBuild '24H2' -OSEdition 'Enterprise' -ZTI"
+powershell -NoLogo -File X:\Start-LazyOSD.ps1
 '@ 
     Set-Content -Path $startnetFile -Value $newStartnet -Force
-    Write-Host "Startnet.cmd overwritten for full automation" -ForegroundColor Green
+    Write-Host "Startnet.cmd configured to use dedicated launcher" -ForegroundColor Green
 }
 
 # Output choice
