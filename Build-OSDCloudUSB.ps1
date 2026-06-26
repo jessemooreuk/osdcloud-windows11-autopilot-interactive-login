@@ -89,10 +89,12 @@ New-OSDCloudWorkspace
 Write-BuildStep "Adding Intel drivers..." 70
 Edit-OSDCloudWinPE -CloudDriver WiFi,IntelNet,*
 
-# Use the cleaner method from Akos Bakos article
-Write-BuildStep "Configuring automation via StartOSDCloud..." 75
+# Use hosted script method (recommended in Akos Bakos article)
+Write-BuildStep "Configuring automation via hosted script..." 75
 
-Edit-OSDCloudWinPE -StartOSDCloud "-OSVersion 'Windows 11' -OSBuild '24H2' -OSEdition 'Enterprise' -ZTI"
+$hostedScriptUrl = "https://raw.githubusercontent.com/jessemooreuk/LazyOSD/main/Start-LazyOSD.ps1"
+
+Edit-OSDCloudWinPE -WebPSScript $hostedScriptUrl
 
 Write-BuildStep "Finalizing WinPE..." 82
 Edit-OSDCloudWinPE
@@ -134,4 +136,4 @@ if ($UseProgressBar) { Write-Progress -Activity "Building $ProjectName" -Complet
 
 Write-Host "=== Build Complete ===" -ForegroundColor Green
 Write-Host "Project: $ProjectName" -ForegroundColor Green
-Write-Host "LazyOSD - Windows 11 24H2 Enterprise (Using cleaner StartOSDCloud method)" -ForegroundColor Green
+Write-Host "LazyOSD - Windows 11 24H2 Enterprise (Hosted Script Method)" -ForegroundColor Green
