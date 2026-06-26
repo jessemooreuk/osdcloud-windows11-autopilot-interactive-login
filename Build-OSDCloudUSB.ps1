@@ -89,12 +89,9 @@ New-OSDCloudWorkspace
 Write-BuildStep "Adding Intel drivers..." 70
 Edit-OSDCloudWinPE -CloudDriver WiFi,IntelNet,*
 
-# Proper ZTI method using -ConfigUrl (recommended approach)
-Write-BuildStep "Configuring true Zero Touch Installation..." 75
-
-$configUrl = "https://raw.githubusercontent.com/jessemooreuk/LazyOSD/main/LazyOSD-Config.ps1"
-
-Start-OSDCloud -ConfigUrl $configUrl -ZTI
+# Compatible ZTI configuration
+Write-BuildStep "Configuring Windows 11 24H2 Enterprise deployment..." 75
+Start-OSDCloud -OSVersion 'Windows 11' -OSBuild '24H2' -OSEdition 'Enterprise' -ZTI
 
 Write-BuildStep "Finalizing WinPE..." 82
 Edit-OSDCloudWinPE
@@ -109,24 +106,25 @@ switch ($choice.ToUpper()) {
     "I" { 
         New-OSDCloudISO
         Start-Sleep -Seconds 2
-        $latestIso = Get-ChildItem -Path "C:\OSDCloud" -Filter "*.iso" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-        if ($latestIso) {
+        # Explicitly use the NoPrompt version for reduced prompts
+        $noPromptIso = "C:\OSDCloud\OSDCloud_NoPrompt.iso"
+        if (Test-Path $noPromptIso) {
             $newName = "$ProjectName.iso"
             $destination = Join-Path "$env:USERPROFILE\Downloads" $newName
-            Move-Item -Path $latestIso.FullName -Destination $destination -Force
-            Write-Host "ISO saved as: $destination" -ForegroundColor Green
+            Move-Item -Path $noPromptIso -Destination $destination -Force
+            Write-Host "ISO saved as: $destination (NoPrompt version)" -ForegroundColor Green
         }
     }
     "B" { 
         New-OSDCloudUSB
         New-OSDCloudISO
         Start-Sleep -Seconds 2
-        $latestIso = Get-ChildItem -Path "C:\OSDCloud" -Filter "*.iso" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-        if ($latestIso) {
+        $noPromptIso = "C:\OSDCloud\OSDCloud_NoPrompt.iso"
+        if (Test-Path $noPromptIso) {
             $newName = "$ProjectName.iso"
             $destination = Join-Path "$env:USERPROFILE\Downloads" $newName
-            Move-Item -Path $latestIso.FullName -Destination $destination -Force
-            Write-Host "ISO saved as: $destination" -ForegroundColor Green
+            Move-Item -Path $noPromptIso -Destination $destination -Force
+            Write-Host "ISO saved as: $destination (NoPrompt version)" -ForegroundColor Green
         }
     }
     default { New-OSDCloudUSB }
@@ -136,4 +134,4 @@ if ($UseProgressBar) { Write-Progress -Activity "Building $ProjectName" -Complet
 
 Write-Host "=== Build Complete ===" -ForegroundColor Green
 Write-Host "Project: $ProjectName" -ForegroundColor Green
-Write-Host "LazyOSD - Windows 11 24H2 Enterprise (True ZTI via ConfigUrl)" -ForegroundColor Green
+Write-Host "LazyOSD - Windows 11 24H2 Enterprise (Using NoPrompt ISO for reduced prompts)" -ForegroundColor Green
